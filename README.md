@@ -55,32 +55,37 @@ A company needs to monitor multiple endpoints across Ubuntu and Windows systems 
 ![Initial Dashboard Access](screenshots/wazuh-initial-dashboard.png)
 *Confirming Wazuh manager deployment and dashboard availability*
 
-### 5. Ubuntu Agent Installation
+### 5. Ubuntu Agent Deployment
+- Configured agent settings and policies via Wazuh interface
+![Agent Configuration Interface](screenshots/ubuntu-agent-configuration-interface.png)
+*Centralized configuration interface for agent settings*
+
+### 6. Ubuntu Agent Installation
 - Installed Wazuh agent on Ubuntu endpoint
 ![Ubuntu Agent Installation](screenshots/ubuntu-agent-installation.png)
 *Ubuntu agent installation and registration with Wazuh manager*
 
-### 6. Windows Agent Deployment
+### 7. Windows Agent Deployment
+- Configured agent settings and policies via Wazuh interface
+![Agent Configuration Interface](screenshots/windows-agent-configuration-interface.png)
+*Centralized configuration interface for agent settings*
+
+### 8. Windows Agent Installation
 - Deployed Wazuh agent on Windows endpoint
 ![Windows Agent Deployment](screenshots/windows-agent-installation.png)
 *Windows agent installation and connectivity verification*
 
-### 7. Agent Configuration Interface
-- Configured agent settings and policies via Wazuh interface
-![Agent Configuration Interface](screenshots/agent-configuration-interface.png)
-*Centralized configuration interface for agent settings*
-
-### 8. Agent Management Dashboard
+### 9. Agent Management Dashboard
 - Verified agent connectivity and status in dashboard
 ![Agent Management Dashboard](screenshots/agent-management-dashboard.png)
 *Managing all connected agents and monitoring health*
 
-### 9. Windows Endpoint Monitoring
+### 10. Windows Endpoint Monitoring
 - Observed Windows endpoint logs and alerts in real-time
 ![Windows Endpoint Monitoring](screenshots/windows-endpoint-monitoring.png)
 *Real-time monitoring and event detection for Windows endpoint*
 
-### 10. Ubuntu Endpoint Monitoring
+### 11. Ubuntu Endpoint Monitoring
 - Observed Ubuntu endpoint logs and alerts in real-time
 ![Ubuntu Endpoint Monitoring](screenshots/ubuntu-endpoint-monitoring.png)
 *Real-time monitoring and event detection for Ubuntu endpoint*
@@ -92,7 +97,8 @@ A company needs to monitor multiple endpoints across Ubuntu and Windows systems 
 ### Technical Challenges
 - **Certificate Management**: Ensuring secure certificate generation and distribution
 - **Docker Networking**: Configuring Docker containers for proper network communication
-- **Agent Compatibility**: Handling differences between Ubuntu and Windows agent setups
+- **Agent Compatibility**: Handling differences between Ubuntu and Windows agent setups, I initially had issues with the Windows agent not connecting to the manager due to the IP address being different
+- **Agent Configuration**: I tried using a machine with low resources to run the agents, but it was not able to handle the load and the agents would not connect to the manager
 
 ### Implementation Considerations
 - **Scalability**: Planning deployment for multiple agents and endpoints
@@ -109,7 +115,7 @@ A company needs to monitor multiple endpoints across Ubuntu and Windows systems 
 ## Reflections
 
 ### Technical Learnings
-- **Docker Deployment**: Gained expertise in containerized Wazuh deployment
+- **Docker Deployment**: Gained experience in containerized Wazuh deployment
 - **Agent Configuration**: Learned detailed agent installation and setup on multiple OS
 - **Endpoint Monitoring**: Enhanced skills in real-time log and alert analysis
 
@@ -137,8 +143,47 @@ A company needs to monitor multiple endpoints across Ubuntu and Windows systems 
 
 1. **Set Up Wazuh Manager**
 ```bash
-# Clone Docker repository
-git clone https://github.com/wazuh/wazuh-docker.git
-cd wazuh-docker
-# Launch manager container
-docker-compose up -d
+# Update the system and install Docker if not already present
+sudo apt update && sudo apt upgrade -y
+sudo apt install docker.io docker-compose -y
+
+# Clone the Wazuh Docker repository
+git clone https://github.com/wazuh/wazuh-docker.git -b v4.12.0
+cd wazuh-docker/single-node
+
+# Generate SSL certificates for secure communication
+docker compose -f generate-indexer-certs.yml run --rm generator
+
+# Start the Wazuh services
+docker compose up -d
+```
+
+2. **Deploy Ubuntu Agent**
+```bash
+# Download and install the Wazuh agent on the Ubuntu VM
+# Replace my ip address(10.174.188.10) with the IP address of the Wazuh manager
+wget https://packages.wazuh.com/4.x/apt/pool/main/w/wazuh-agent/wazuh-agent_4.12.0-1_amd64.deb
+sudo WAZUH_MANAGER='10.174.188.10' WAZUH_AGENT_NAME='ubuntu_vm' dpkg -i ./wazuh-agent_4.12.0-1_amd64.deb
+
+# Enable and start the agent service
+sudo systemctl daemon-reload
+sudo systemctl enable wazuh-agent
+sudo systemctl start wazuh-agent
+```
+
+3. **Deploy Windows Agent**
+```powershell
+# Use PowerShell on the Windows VM to download and install the agent
+Invoke-WebRequest -Url https://packages.wazuh.com/4.x/windows/wazuh-agent-4.12.0-1.msi -OutFile $env:tmp\wazuh-agent.msi
+msiexec.exe /i $env:tmp\wazuh-agent.msi /q WAZUH_MANAGER='10.174.188.10' WAZUH_AGENT_NAME='windows_vm'
+
+# Start Wazuh service
+NET START WazuhSvc
+```
+
+4. **Verify Deployment**
+```bash
+# Access the Wazuh dashboard via https://10.174.188.10 in a web browser
+# Check that both agents appear as "Active" in the dashboard
+# Monitor security events and ensure data is being collected
+```
